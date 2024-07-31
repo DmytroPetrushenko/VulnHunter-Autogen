@@ -1,0 +1,11 @@
+.env
+resources/screen_shots
+.idea
+.gitignor
+OAI_CONFIG_LIST
+config.ini
+config/config.ini
+.cache
+.venv
+workflows/workflow_teamlead_tasksupervisor_pentest/.cache
+my_sqlite

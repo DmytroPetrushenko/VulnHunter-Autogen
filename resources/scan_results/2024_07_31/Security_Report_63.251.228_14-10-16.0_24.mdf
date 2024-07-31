@@ -1,0 +1,28 @@
+## Security Report: Penetration Testing on IP Range 63.251.228.0/24
+
+### Overview
+This document presents findings and recommendations following an extensive penetration testing exercise targeting the IP range 63.251.228.0/24. The goal was to identify potential vulnerabilities, assess the security posture, and recommend measures to enhance overall security.
+
+### Scope of Testing
+- **Target**: 63.251.228.0/24 IP range
+- **Objective**: Identification of vulnerabilities and testing of security controls across identified services including SSH, SMB, HTTP, and Apache servers.
+
+### Summary of Tests and Outcomes
+1. **Apache/HTTP Services**: Failed due to incorrect resolution of host IPs for Tomcat Manager and WebDAV Scanner.
+2. **SSH Services**: Failed due to resolution issues in brute force and version retrieval tasks.
+3. **SMB Services**: Partial success with SMB version identification; however, directory/file checks encountered resolution issues.
+4. **Vulnerability Scanning**: Both HTTP PUT and Zerologon vulnerability tests failed due to host resolution errors.
+5. **Service Enumeration and Info Gathering**: Both HTTP enumeration and SMB share enumeration faced operational issues.
+
+### Detailed Findings and Impact
+- **Service Misconfigurations**: Errors in service configuration leading to test failures. While specific vulnerabilities were not exploited or identified due to these failures, misconfigurations can lead to potential security gaps.
+- **Connection and Resolution Issues**: These were prevalent across multiple test modules, indicating possible network segmentation, access control mechanisms, or incorrect configuration settings in our test setup.
+
+### Recommendations
+- **Review and Confirm IP Addressing and Network Configurations**: Ensure all target addresses are correctly configured and accessible.
+- **Revalidate and Adjust Module Settings**: Correct settings in Metasploit modules to match the network and target characteristics.
+- **Conduct Incremental Testing**: Reduce the scope of simultaneous tests and perform more granular testing to isolate issues.
+
+### Concluding Summary
+The initial penetration testing phase encountered significant challenges, primarily due to configuration and resolution issues, preventing a full assessment of potential security vulnerabilities. It is recommended to address these preliminary issues and conduct a comprehensive re-assessment. Additionally, periodic reviews should be scheduled to continually assess and adapt to new security challenges.
+
