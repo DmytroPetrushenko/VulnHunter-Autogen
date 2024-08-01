@@ -17,10 +17,10 @@ PREFIX_REPLACEMENT = 'REPLACEMENT_'
 
 # msf_tools.py constant
 KEYWORDS = ['execution completed', 'OptionValidateError']
-TIMEOUT = 300
+TIMEOUT = 30000000
 
 # some flag
-MOCK: bool = True
+MOCK: bool = False
 
 #database
 TABLE_NAME: str = None

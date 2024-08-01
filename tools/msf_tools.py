@@ -46,10 +46,9 @@ def msf_console_scan_tool(module_category: str, module_name: str, rhosts: str, r
         raise Exception('Table creation failed')
 
     if MOCK:
-        record = check_existing_record(db_connection, table_name, f'{module_category}/{module_name}', rhosts,
-                                       rport or '0', ports or '', threads)
+        record = check_existing_record(db_connection, f'{module_category}/{module_name}', rhosts)
         if record:
-            print(f'The data was found in database for these parameters: {module_category}/{module_name}, {rhosts}, {rport}, {ports}, {threads}')
+            print(f'The data was found in database for these parameters: {module_category}/{module_name}, {rhosts}')
             return record[0]
 
     # Get values from environment variables if they are not provided
@@ -71,6 +70,8 @@ def msf_console_scan_tool(module_category: str, module_name: str, rhosts: str, r
             f'set RHOSTS {rhosts}',
             f'set THREADS {threads}'
         ]
+        if 'scanner/portscan/tcp' in module_name:
+            commands.append(f'set CONCURRENCY 100')
         if rport:
             commands.append(f'set RPORT {rport}')
         if ports:
@@ -95,6 +96,7 @@ def msf_console_scan_tool(module_category: str, module_name: str, rhosts: str, r
         while True:
             response = client.consoles.console(console_id).read()
             output += response['data']
+
 
             if any(keyword in output for keyword in KEYWORDS):
                 break

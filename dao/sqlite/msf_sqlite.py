@@ -1,5 +1,6 @@
 import re
 import sqlite3 as sqlite
+from typing import List, Dict
 
 
 def create_connection(db_file="my_sqlite"):
@@ -243,12 +244,134 @@ def set_result_by_uuid(db_connection, table_name, uuid, result):
         return False
 
 
-def check_existing_record(db_connection, table_name, module, rhosts, rport, ports, threads):
-    cursor = db_connection.cursor()
-    query = f"""
-    SELECT output FROM {table_name}
-    WHERE module = ? AND rhosts = ? AND (rport = ? OR rport IS NULL) AND (ports = ? OR ports IS NULL) AND threads = ?
+def get_all_tables(db_connection) -> List[str]:
     """
-    cursor.execute(query, (module, rhosts, rport, ports, threads))
-    record = cursor.fetchone()
-    return record
+    Retrieve the names of all tables in the database, excluding SQLite internal tables.
+
+    Args:
+        db_connection: The database connection object.
+
+    Returns:
+        List[str]: A list of table names.
+    """
+    cursor = db_connection.cursor()
+    query = """
+    SELECT name 
+    FROM sqlite_master 
+    WHERE type='table' AND name NOT LIKE 'sqlite_%'
+    """
+    cursor.execute(query)
+    tables = [row[0] for row in cursor.fetchall()]
+    return tables
+
+
+def table_has_required_fields(db_connection, table_name: str, required_fields: List[str]) -> bool:
+    """
+    Check if a table has all the required fields.
+
+    Args:
+        db_connection: The database connection object.
+        table_name (str): The name of the table to check.
+        required_fields (List[str]): A list of required field names.
+
+    Returns:
+        bool: True if the table has all the required fields, False otherwise.
+    """
+    cursor = db_connection.cursor()
+    query = f"PRAGMA table_info({table_name})"
+    cursor.execute(query)
+    columns = [row[1] for row in cursor.fetchall()]
+    return all(field in columns for field in required_fields)
+
+
+def get_filtered_tables(db_connection, required_fields: List[str]) -> List[str]:
+    """
+    Get a list of tables that have all the required fields.
+
+    Args:
+        db_connection: The database connection object.
+        required_fields (List[str]): A list of required field names.
+
+    Returns:
+        List[str]: A list of table names that have all the required fields.
+    """
+    tables = get_all_tables(db_connection)
+    filtered_tables = []
+    for table in tables:
+        if table_has_required_fields(db_connection, table, required_fields):
+            filtered_tables.append(table)
+    return filtered_tables
+
+
+
+def add_to_results(results: Dict[str, List[str]], table_name: str, result: str) -> None:
+    """
+    Add a result to the results dictionary under the specified table name.
+
+    Args:
+        results (Dict[str, List[str]]): The dictionary to add the result to.
+        table_name (str): The table name to use as the key in the dictionary.
+        result (str): The result to add to the list under the table name.
+    """
+    results.setdefault(table_name, []).append(result)
+
+
+def chose_heavy_weight_result(results: Dict[str, List[str]]) -> str | None:
+    """
+    Choose the heaviest (longest) result from a dictionary of results.
+
+    Args:
+        results (Dict[str, List[str]]): A dictionary where keys are table names and values are lists of results.
+
+    Returns:
+        str | None: The result with the maximum length, or None if there are no results.
+
+    Raises:
+        ValueError: If the results dictionary is empty.
+        TypeError: If any of the values in the results dictionary are not lists.
+    """
+    if not results:
+        raise ValueError("The results dictionary is empty.")
+
+    if not all(isinstance(value, list) for value in results.values()):
+        raise TypeError("All values in the results dictionary should be lists.")
+
+    result_list = [item for sublist in results.values() for item in sublist]
+
+    if not result_list:
+        return None
+
+    heaviest_result = max(result_list, key=len)
+    return heaviest_result
+
+
+def check_existing_record(db_connection, module: str, rhosts: str) -> str | None:
+    """
+    Check if there is an existing record in any table for the given module and rhosts.
+
+    Args:
+        db_connection: The database connection object.
+        module (str): The module to search for.
+        rhosts (str): The rhosts to search for.
+
+    Returns:
+        str | None: The output from the first matching record, or None if no match is found.
+    """
+    required_fields = ['module', 'rhosts', 'output']
+    tables = get_filtered_tables(db_connection, required_fields)
+    cursor = db_connection.cursor()
+
+    results = {}
+    for table_name in tables:
+        query = f"""
+        SELECT output 
+        FROM {table_name}
+        WHERE module = ? AND rhosts = ?
+        """
+        cursor.execute(query, (module, rhosts))
+        record = cursor.fetchone()
+        if record:
+            add_to_results(results, table_name, record[0])
+
+    return chose_heavy_weight_result(results) if results else None
+
