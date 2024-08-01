@@ -37,17 +37,11 @@ services:
       ./msfrpcd -P Rn4klU6y -f -a 0.0.0.0 -p 55552;
       tail -f /dev/null
       "
-    deploy:
-      resources:
-        limits:
-          cpus: '5.0'
-          memory: '10G'
-        reservations:
-          cpus: '4.0'
-          memory: '5G'
 
 networks:
   msf:
+    driver: bridge
     ipam:
       config:
         - subnet: 172.18.0.0/16
+
