@@ -1,4 +1,5 @@
 import re
+import sqlite3
 import sqlite3 as sqlite
 from typing import List, Dict
 
@@ -59,14 +60,15 @@ def create_table(conn, table_name: str, table_fields: dict[str, list[str]] = Non
         return False
 
 
-def insert_data(conn, table_name: str, table_values: dict):
+def insert_data(conn, table_name: str, table_values: Dict[str, str], logger) -> bool:
     """
     Insert a new result into the specified table.
 
     Args:
         conn (sqlite3.Connection): Connection to the SQLite database.
         table_name (str): Name of the table into which the data will be inserted.
-        table_values (dict): Dictionary containing the column names and values to be inserted.
+        table_values (Dict[str, str]): Dictionary containing the column names and values to be inserted.
+        logger (PerformanceLogger): Logger instance for logging.
 
     Returns:
         bool: True if the insertion was successful, False otherwise.
@@ -81,7 +83,7 @@ def insert_data(conn, table_name: str, table_values: dict):
 
     if not value_columns.issubset(table_columns):
         missing_columns = value_columns - table_columns
-        print(f"Error: The following columns are missing in the table {table_name}: {missing_columns}")
+        logger.error(f"The following columns are missing in the table {table_name}: {missing_columns}")
         return False
 
     # Creating the SQL query dynamically
@@ -102,12 +104,13 @@ def insert_data(conn, table_name: str, table_values: dict):
         cur = conn.cursor()
         cur.execute(sql, values)  # Parameterized input protects against SQL injections.
         conn.commit()  # Commit changes to save them to the database.
-        print(f"Data inserted successfully into table {table_name}.")
+        logger.info(f"Data inserted successfully into table {table_name}.")
         return True
-    except sqlite.Error as e:
-        print(f"Error inserting data into table {table_name}: {e}")
+    except sqlite3.Error as e:
+        logger.error(f"Error inserting data into table {table_name}: {e}")
         conn.rollback()  # Rollback changes in case of an error.
         return False
+
 
 
 def get_result_by_uuid(conn, table_name, uuid) -> str:

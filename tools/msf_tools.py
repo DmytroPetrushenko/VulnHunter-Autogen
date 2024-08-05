@@ -1,48 +1,74 @@
+import datetime
 import os
 import re
 import time
-from datetime import datetime
 from typing import Optional, Tuple
 
 from constants import *
 from dao.sqlite.msf_sqlite import create_table, insert_data, create_connection, check_existing_record
 from utils.msf.classes import CustomMsfRpcClient
+from utils.task_time_logger import TaskTimeLogger
 
 
 def msf_console_scan_tool(module_category: str, module_name: str, rhosts: str, rport: Optional[str] = None,
                           ports: Optional[str] = None, threads: int = 50, target: Optional[int] = None,
                           payload: Optional[str] = None, lhost: Optional[str] = None,
                           lport: Optional[str] = None) -> str:
-    start_time_point = datetime.now()
-    print(f'Timestamp 1: {start_time_point.strftime("%H:%M:%S")}')
+    """
+    Execute a Metasploit module through the console interface and return the output.
 
+    Args:
+        module_category (str): The category of the Metasploit module (e.g., 'auxiliary', 'exploit').
+        module_name (str): The name of the Metasploit module (e.g., 'scanner/http/http_version').
+        rhosts (str): The target hosts to scan.
+        rport (Optional[str]): The target port to scan.
+        ports (Optional[str]): The target ports to scan.
+        threads (int): The number of threads to use for scanning. Default is 50.
+        target (Optional[int]): The specific target for the module.
+        payload (Optional[str]): The payload to use with the module.
+        lhost (Optional[str]): The local host for the payload.
+        lport (Optional[str]): The local port for the payload.
+
+    Returns:
+        str: The output from the console after executing the module.
+
+    Example:
+        output = msf_console_scan_tool('auxiliary', 'scanner/http/http_version', '3.255.212.92')
+        print(output)
+    """
+
+    logger = TaskTimeLogger(f'{module_category}/{module_name}')
+    logger.log_start()
+
+    # Create database connection and create database
     db_connection = create_connection()
-    print(f'Timestamp 2: {(datetime.now() - start_time_point).total_seconds()} seconds')
+    logger.log_duration('Database connection created')
 
     table_name, table_fields = get_table_name_and_fields()
+
     if not create_table(db_connection, table_name, table_fields):
+        logger.error('Table creation failed')
         raise Exception('Table creation failed')
-    print(f'Timestamp 3: {(datetime.now() - start_time_point).total_seconds()} seconds')
+    logger.log_duration('Table creation checked')
 
     if MOCK:
         record = check_existing_record(db_connection, f'{module_category}/{module_name}', rhosts)
         if record:
-            print(f'The data was found in database for these parameters: {module_category}/{module_name}, {rhosts}')
+            logger.info(f'The data was found in database for these parameters: {module_category}/{module_name}, {rhosts}')
             return record[0]
 
+    # Get values from environment variables if they are not provided
     password = os.getenv('PASSWORD')
     host = os.getenv('HOST')
     port = int(os.getenv('PORT'))
     ssl = os.getenv('SSL').lower() == 'true'
-    print(f'Timestamp 4: {(datetime.now() - start_time_point).total_seconds()} seconds')
 
-    rpc_start_time = datetime.now()
+    # Create Metasploit RPC client
+    logger.log_duration('RPC Client creation started')
     client = CustomMsfRpcClient(password=password, host=host, port=port, ssl=ssl).get_client()
-    rpc_end_time = datetime.now()
-    print(f'Timestamp 5: Start RPC Client creation: {rpc_start_time.strftime("%H:%M:%S")}')
-    print(f'Timestamp 5: End RPC Client creation: {rpc_end_time.strftime("%H:%M:%S")}')
-    print(f'Timestamp 5: RPC Client creation duration: {(rpc_end_time - rpc_start_time).total_seconds()} seconds')
+    logger.log_duration('RPC Client creation completed')
 
+    # Create a new console
     current_console = client.consoles.console()
 
     try:
@@ -68,54 +94,70 @@ def msf_console_scan_tool(module_category: str, module_name: str, rhosts: str, r
         commands.append('run')
 
         command_str = '\n'.join(commands) + '\n'
-
-
         current_console.write(command_str)
-        print(f'Timestamp 6: {(datetime.now() - start_time_point).total_seconds()} seconds')
 
+        logger.log_duration('the command was created and sent to msfconsole.')
+
+        # Record the start time
         start_time = time.time()
+
         output = ""
         while True:
             response = current_console.read()
-            current_output = response['data']
-            print(current_output)
-            output += current_output
+            if response['data']:
+                # print(response['data'])
+                output += response['data']
 
             if any(keyword in output for keyword in KEYWORDS):
                 break
 
-            if time.time() - start_time > 60:
+            # Check for timeout
+            if time.time() - start_time > TIMEOUT:
                 timeout_message = '[TIMEOUT] "Time limit exceeded, exiting the loop."'
                 output += timeout_message
-                print(timeout_message)
+                logger.warning(timeout_message)
 
                 # Stop the task in Metasploit
                 current_console.write('exit\n')
-
                 break
 
             time.sleep(1)
     finally:
+        # Destroy the console
         current_console.destroy()
 
-    split_output = re.split(r'Metasploit Documentation: https://docs.metasploit.com/\n', output, maxsplit=1)
-    filtered_output = split_output[1] if len(split_output) > 1 else ""
+    logger.log_duration(f'This task was executed! Next, data will be cleaned and written into the database!')
 
+    # Split the output at the documentation line and take the part after it
+    split_output = re.split(r'Metasploit Documentation: https://docs.metasploit.com/\n', output, maxsplit=1)
+    if len(split_output) > 1:
+        filtered_output = split_output[1]
+    else:
+        filtered_output = ""
+
+    # Insert the result into the database
     table_values = {
         'module': f'{module_category}/{module_name}',
         'rhosts': rhosts,
         'rport': rport or '0',
         'ports': ports or '',
         'threads': threads,
+        'duration': logger.get_duration(),
         'output': filtered_output
     }
-    insert_data(db_connection, table_name, table_values)
+    insert_data(db_connection, table_name, table_values, logger)
 
     return filtered_output
 
 
 def get_table_name_and_fields() -> Tuple[str, dict]:
-    table_name = TABLE_NAME if TABLE_NAME else f'msf_console_{datetime.now().strftime("%Y_%m_%d")}'
+    """
+    Generate the table name and define the table fields.
+
+    Returns:
+        tuple: A tuple containing the table name and a dictionary of table fields.
+    """
+    table_name = TABLE_NAME if TABLE_NAME else f'msf_console_{datetime.datetime.now().strftime("%Y_%m_%d")}'
     table_fields = {
         'id': ['INTEGER', 'PRIMARY KEY', 'AUTOINCREMENT'],
         'module': ['TEXT', 'NOT NULL'],

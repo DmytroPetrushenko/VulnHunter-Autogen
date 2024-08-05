@@ -6,8 +6,8 @@ from workflows.workflow_teamlead_tasksupervisor_pentest.workflow_1_claude import
 
 filtered = msf_console_scan_tool(
     'auxiliary',
-    'scanner/portscan/tcp',
-    '63.251.228.0/24',
+    'scanner/portscan/syn',
+    '63.251.228.70',
     threads=500
 )
 print(filtered)

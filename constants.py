@@ -20,7 +20,8 @@ KEYWORDS = ['execution completed', 'OptionValidateError']
 TIMEOUT = 30000000
 
 # some flag
-MOCK: bool = False
+MOCK: bool = True
 
 #database
-TABLE_NAME: str = None
+TABLE_NAME: str|None = None
+
