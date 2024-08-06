@@ -38,9 +38,10 @@ def start_workflow():
 
     # Define agent names
     agents_names = [
-        f'{TEAM_LEAD}#2',
+        f'{TEAM_LEAD}#3',
         f'{TASK_SUPERVISOR}#2',
-        f'{PENTEST}#2',
+        f'{PENTEST}#3',
+        f'{HELPER}#1',
         'executor',
         'initializer'
     ]
@@ -49,6 +50,7 @@ def start_workflow():
     team_lead_seed = 0.12345
     pentest_seed = 0.67890
     task_supervisor_seed = 0.54321
+    helper_seed = 0.72591
 
     # Main input for the workflow
     main_input = "Please investigate 192.168.56.101"
@@ -64,17 +66,21 @@ def start_workflow():
     team_lead = agent_factory.create_llm_agent(TEAM_LEAD, user_seed=team_lead_seed)
     pentest = agent_factory.create_llm_agent(PENTEST, user_seed=pentest_seed)
     task_supervisor = agent_factory.create_llm_agent(TASK_SUPERVISOR, user_seed=task_supervisor_seed)
+    helper = agent_factory.create_llm_agent(HELPER, user_seed=helper_seed)
     executor = agent_factory.get_executor()
     initializer = agent_factory.get_initializer()
 
     # Connect necessary tools to pentest agent
-    pentest_tools = [msf_console_scan_tool, read_from_file, write_to_file]
+    pentest_tools = [msf_console_scan_tool]
+    common_tools = [read_from_file, write_to_file]
     agent_factory.connect_tool(pentest, pentest_tools)
+    agent_factory.connect_tool(helper, common_tools)
 
     # Define key phrases
-    pentest_agent_keywords = re.compile(r'Pentest Agent, rework required', re.IGNORECASE)
-    team_lead_keywords = re.compile(r'Team Lead, task completed satisfactorily', re.IGNORECASE)
-    task_supervisor_keywords = re.compile(r'Task Supervisor:', re.IGNORECASE)
+    pentest_agent_keywords = re.compile(r'Pentest', re.IGNORECASE)
+    team_lead_keywords = re.compile(r'Team Lead', re.IGNORECASE)
+    task_supervisor_keywords = re.compile(r'Task Supervisor', re.IGNORECASE)
+    helper_keywords = re.compile(r'Helper agent', re.IGNORECASE)
 
     # Custom state transition function to determine the next agent to speak
     def state_transition(last_speaker, groupchat):
@@ -84,8 +90,15 @@ def start_workflow():
         if last_speaker is initializer:
             return team_lead
         if last_speaker is team_lead:
-
-            return pentest
+            if helper_keywords.search(last_message):
+                return helper
+            if pentest_agent_keywords.search(last_message):
+                return pentest
+            return team_lead
+        if last_speaker is helper:
+            if 'tool_calls' in messages[-1].keys():
+                return executor
+            return team_lead
         if last_speaker is pentest:
             if 'tool_calls' in messages[-1].keys():
                 return executor
@@ -93,6 +106,8 @@ def start_workflow():
                 return task_supervisor
             return pentest
         if last_speaker is executor:
+            if 'helper' in messages[-2]['name']:
+                return team_lead
             return pentest
         if last_speaker is task_supervisor:
             if pentest_agent_keywords.search(last_message):
@@ -105,7 +120,7 @@ def start_workflow():
     workflow_manager = WorkflowManager(
         main_input=main_input,
         initializer=initializer,
-        agents_list=[initializer, team_lead, pentest, task_supervisor, executor],
+        agents_list=[initializer, team_lead, pentest, task_supervisor, helper, executor],
         state_transition=state_transition,
         llm_config_list=llm_config_gpt,
         max_round=50

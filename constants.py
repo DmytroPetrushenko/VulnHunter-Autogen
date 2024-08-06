@@ -4,6 +4,7 @@ EXECUTOR = 'executor'
 PENTEST = 'pentest'
 TEAM_LEAD = 'team_lead'
 TASK_SUPERVISOR = 'task_supervisor'
+HELPER = 'helper'
 
 # path to msf modules names
 REPLACEMENT_PRELIMINARY_MODULES = 'msf_modules/preliminary_modules.txt'
@@ -16,8 +17,8 @@ TEXT_INSIDE_BRACES_PATTERN = r'\{(.*?)\}'
 PREFIX_REPLACEMENT = 'REPLACEMENT_'
 
 # msf_tools.py constant
-KEYWORDS = ['execution completed', 'OptionValidateError']
-TIMEOUT = 30000000
+KEYWORDS = ['execution completed', 'OptionValidateError', '[-] Unknown command: run.']
+TIMEOUT = 3600
 
 # some flag
 MOCK: bool = True

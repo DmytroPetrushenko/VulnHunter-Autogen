@@ -3,7 +3,6 @@ from typing import List
 from autogen import GroupChat, GroupChatManager, ConversableAgent
 
 
-
 class WorkflowManager:
     def __init__(self,
                  main_input: str,
@@ -13,7 +12,6 @@ class WorkflowManager:
                  llm_config_list: list,
                  max_round: int = 10
                  ):
-
         self._agents_list = agents_list
         self._initializer = initializer
         self._state_transition = state_transition
@@ -21,12 +19,10 @@ class WorkflowManager:
         self._llm_config_list = llm_config_list
         self._main_input = main_input
 
-
     def start_workflow(self):
         """
         Start the workflow by creating a GroupChat and GroupChatManager, and initiating the chat.
         """
-
 
         groupchat = GroupChat(
             agents=self._agents_list,
@@ -44,4 +40,4 @@ class WorkflowManager:
             human_input_mode="NEVER"
         )
 
-        self._initializer.initiate_chat( manager, message=f"{self._main_input}")
+        self._initializer.initiate_chat(manager, message=f"{self._main_input}")

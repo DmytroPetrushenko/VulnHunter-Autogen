@@ -18,14 +18,10 @@ THREADS => 50
 [*] Auxiliary module execution completed
 """
 
-
-
 compressor = DataCompressor()
-compressor._start_compressing(messages)
+compressor.start_compressing(messages)
 
 # for key, value in compressor.result_dict.items():
 #     print(f"{key}: {value}")
 
-for value in compressor.reserve_list:
-    print(value)
-
+print(compressor.get_compressed_output())

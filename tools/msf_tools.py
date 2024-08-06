@@ -4,9 +4,10 @@ import re
 import time
 from typing import Optional, Tuple, List
 
+from pymetasploit3.msfrpc import MsfRpcClient
+
 from constants import *
 from dao.sqlite.msf_sqlite import create_table, insert_data, create_connection, check_existing_record
-from utils.msf.classes import CustomMsfRpcClient
 from utils.msf.data_compressor import DataCompressor
 from utils.task_time_logger import TaskTimeLogger
 
@@ -67,7 +68,7 @@ def msf_console_scan_tool(module_category: str, module_name: str, rhosts: str, r
 
     # Create Metasploit RPC client
     logger.log_duration('RPC Client creation started')
-    client = CustomMsfRpcClient(password=password, host=host, port=port, ssl=ssl).get_client()
+    client = MsfRpcClient(password=password, host=host, port=port, ssl=ssl)
     logger.log_duration('RPC Client creation completed')
 
     # Create a new console
@@ -109,6 +110,7 @@ def msf_console_scan_tool(module_category: str, module_name: str, rhosts: str, r
             if response['data']:
                 # print(response['data'])
                 output += response['data']
+                print(response['data'])
 
             if any(keyword in output for keyword in KEYWORDS):
                 break
@@ -136,7 +138,7 @@ def msf_console_scan_tool(module_category: str, module_name: str, rhosts: str, r
     compressed_output: str|None = None
     if should_use_compressor(filtered_output, min_lines=15, patterns=[r'\[\*\]']):
         compressor = DataCompressor()
-        compressor._start_compressing(filtered_output)
+        compressor.start_compressing(filtered_output)
         compressed_output = compressor.get_compressed_output()
 
     # Insert the result into the database
@@ -148,7 +150,7 @@ def msf_console_scan_tool(module_category: str, module_name: str, rhosts: str, r
         'threads': threads,
         'duration': logger.get_duration(),
         'output': filtered_output,
-        'compressed_output': compressed_output
+        'compressed_output': str(compressed_output)
     }
     insert_data(db_connection, table_name, table_values, logger)
 
@@ -170,7 +172,9 @@ def get_table_name_and_fields() -> Tuple[str, dict]:
         'rport': ['INTEGER'],
         'ports': ['TEXT'],
         'threads': ['INTEGER'],
-        'output': ['TEXT']
+        'output': ['TEXT'],
+        'compressed_output': ['TEXT'],
+        'duration': ['TEXT']
     }
     return table_name, table_fields
 

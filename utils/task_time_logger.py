@@ -4,8 +4,9 @@ import logging
 from datetime import datetime
 
 # Set up the logger
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# logging.basicConfig(level=logging.INFO)
+# logger = logging.getLogger(__name__)
+
 
 class TaskTimeLogger:
 
@@ -19,10 +20,8 @@ class TaskTimeLogger:
         logging.basicConfig(level=logging.INFO)
         self.logger = logging.getLogger(__name__)
 
-
     def enable_logging(self):
         self.duration_logging_enabled = True
-
 
     def disable_logging(self):
         self.duration_logging_enabled = False

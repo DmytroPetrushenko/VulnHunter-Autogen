@@ -7,10 +7,11 @@ PATTERN_SPLIT_LINES = r'\n'
 
 class DataCompressor:
     def __init__(self):
+        self.lines = None
         self.result_dict: Dict[str, List[str]] = {}
         self.reserve_list: List[str] = []
 
-    def _start_compressing(self, text: str):
+    def start_compressing(self, text: str):
         self.lines: List[str] = self._create_lines(text)
         self._main_loop(self.lines)
 
@@ -76,4 +77,4 @@ class DataCompressor:
             self._recursive_extract(pattern_parts, lines, i + 1, added_to_reserve)
 
     def get_compressed_output(self):
-        return self.reserve_list
+        return ' ' + self.reserve_list[0] + '\n ' + '\n '.join(self.reserve_list[1:])

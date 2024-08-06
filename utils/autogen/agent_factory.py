@@ -19,9 +19,6 @@ class AgentFactory:
         self._executor = self._create_executor()
         self._initializer = self._create_initializer()
 
-
-
-
     def _generate_unique_seeds(self, count: int) -> List[float]:
         """
         Generate a list of unique random seeds.
@@ -36,7 +33,6 @@ class AgentFactory:
         while len(seeds) < count:
             seeds.add(random.uniform(RANDOM_ALPHA, RANDOM_OMEGA))
         return list(seeds)
-
 
     def _create_executor(self) -> ConversableAgent:
         executor = ConversableAgent(
@@ -62,7 +58,6 @@ class AgentFactory:
     def get_initializer(self):
         return self._initializer
 
-
     def create_llm_agent(self, agent_name: str, user_seed: float = None, custom_llm_config: list = None):
         """
         Create and return an LLM agent with the specified name and optional seed.
@@ -77,14 +72,12 @@ class AgentFactory:
         current_seed = user_seed if user_seed else (self._seeds.pop() if self._seeds else random.uniform(0, 1))
         current_llm_config = custom_llm_config if custom_llm_config else self._common_llm_config
         return ConversableAgent(
-                name=agent_name,
-                system_message = self._system_message.get_system_message(agent_name),
-                llm_config={"config_list": current_llm_config, "cache_seed": current_seed}
-            )
-
+            name=agent_name,
+            system_message=self._system_message.get_system_message(agent_name),
+            llm_config={"config_list": current_llm_config, "cache_seed": current_seed}
+        )
 
     def connect_tool(self, llm_agent, tools_list):
         for tool in tools_list:
             llm_agent.register_for_llm(name=tool.__name__, description=tool.__doc__)(tool)
             self._executor.register_for_execution(name=tool.__name__)(tool)
-
