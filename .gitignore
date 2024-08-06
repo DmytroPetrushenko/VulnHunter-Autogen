@@ -8,4 +8,3 @@ config/config.ini
 .cache
 .venv
 workflows/workflow_t_ts_p/.cache
-my_sqlite
