@@ -1,29 +1,31 @@
-from tools.msf_tools import msf_console_scan_tool
-from workflows.workflow_teamlead_tasksupervisor_pentest.workflow_1_claude import start_workflow
+from utils.msf.data_compressor import DataCompressor
 
-# start_workflow()
+messages = """
+RHOSTS => 63.251.228.70
+THREADS => 50
+[*]  TCP UNFILTERED 63.251.228.70:1
+[*]  TCP UNFILTERED 63.251.228.70:2
+[*]  TCP UNFILTERED 63.251.228.70:3
+[*]  TCP UNFILTERED 63.251.228.70:5
+[*]  TCP UNFILTERED 63.251.228.70:6
+[*]  TCP UNFILTERED 63.251.228.70:8
+[*]  TCP UNFILTERED 63.251.228.70:9992
+[*]  TCP UNFILTERED 63.251.228.70:9995
+[*]  TCP UNFILTERED 63.251.228.70:9997
+[*]  TCP UNFILTERED 63.251.228.70:9998
+[*]  TCP UNFILTERED 63.251.228.70:9999
+[*] Scanned 1 of 1 hosts (100% complete)
+[*] Auxiliary module execution completed
+"""
 
 
-filtered = msf_console_scan_tool(
-    'auxiliary',
-    'scanner/portscan/syn',
-    '63.251.228.70',
-    threads=500
-)
-print(filtered)
 
-# from line_profiler import LineProfiler
-#
-# def profile_msf_tool():
-#     filtered = msf_console_scan_tool(
-#         'auxiliary',
-#         'scanner/portscan/tcp',
-#         '63.251.228.0/24',
-#         threads=500
-#     )
-#     return filtered
-#
-# lp = LineProfiler()
-# lp_wrapper = lp(profile_msf_tool)
-# lp_wrapper()
-# lp.print_stats()
+compressor = DataCompressor()
+compressor._start_compressing(messages)
+
+# for key, value in compressor.result_dict.items():
+#     print(f"{key}: {value}")
+
+for value in compressor.reserve_list:
+    print(value)
+

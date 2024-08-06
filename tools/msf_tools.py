@@ -2,11 +2,12 @@ import datetime
 import os
 import re
 import time
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
 
 from constants import *
 from dao.sqlite.msf_sqlite import create_table, insert_data, create_connection, check_existing_record
 from utils.msf.classes import CustomMsfRpcClient
+from utils.msf.data_compressor import DataCompressor
 from utils.task_time_logger import TaskTimeLogger
 
 
@@ -54,7 +55,8 @@ def msf_console_scan_tool(module_category: str, module_name: str, rhosts: str, r
     if MOCK:
         record = check_existing_record(db_connection, f'{module_category}/{module_name}', rhosts)
         if record:
-            logger.info(f'The data was found in database for these parameters: {module_category}/{module_name}, {rhosts}')
+            logger.info(
+                f'The data was found in database for these parameters: {module_category}/{module_name}, {rhosts}')
             return record[0]
 
     # Get values from environment variables if they are not provided
@@ -130,10 +132,12 @@ def msf_console_scan_tool(module_category: str, module_name: str, rhosts: str, r
 
     # Split the output at the documentation line and take the part after it
     split_output = re.split(r'Metasploit Documentation: https://docs.metasploit.com/\n', output, maxsplit=1)
-    if len(split_output) > 1:
-        filtered_output = split_output[1]
-    else:
-        filtered_output = ""
+    filtered_output = split_output[1] if len(split_output) > 1 else ""
+    compressed_output: str|None = None
+    if should_use_compressor(filtered_output, min_lines=15, patterns=[r'\[\*\]']):
+        compressor = DataCompressor()
+        compressor._start_compressing(filtered_output)
+        compressed_output = compressor.get_compressed_output()
 
     # Insert the result into the database
     table_values = {
@@ -143,11 +147,12 @@ def msf_console_scan_tool(module_category: str, module_name: str, rhosts: str, r
         'ports': ports or '',
         'threads': threads,
         'duration': logger.get_duration(),
-        'output': filtered_output
+        'output': filtered_output,
+        'compressed_output': compressed_output
     }
     insert_data(db_connection, table_name, table_values, logger)
 
-    return filtered_output
+    return compressed_output if compressed_output else filtered_output
 
 
 def get_table_name_and_fields() -> Tuple[str, dict]:
@@ -168,3 +173,14 @@ def get_table_name_and_fields() -> Tuple[str, dict]:
         'output': ['TEXT']
     }
     return table_name, table_fields
+
+
+def should_use_compressor(text: str, min_lines: int = 10, patterns: List[str] = [r'\[\*\]']) -> bool:
+    lines = text.splitlines()
+    if len(lines) > min_lines:
+        return True
+    if patterns:
+        for pattern in patterns:
+            if any(re.search(pattern, line) for line in lines):
+                return True
+    return False

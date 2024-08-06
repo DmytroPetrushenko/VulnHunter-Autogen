@@ -1,5 +1,7 @@
+import os
 import re
 
+import agentops
 import autogen
 
 from constants import *
@@ -8,6 +10,7 @@ from tools.msf_tools import msf_console_scan_tool
 from utils.autogen.agent_factory import AgentFactory
 from utils.autogen.system_message import SystemMessage
 from utils.autogen.workflow_manager import WorkflowManager
+
 
 
 def start_workflow():
@@ -24,6 +27,9 @@ def start_workflow():
         - Pentest Agent collaborates with the Executor for executing tasks and then submits the results to the Task Supervisor.
         - Task Supervisor reviews the results and decides to either approve them and send them to the Team Lead, or request rework from the Pentest Agent.
     """
+
+    # When initializing AgentOps, you can pass in optional tags to help filter sessions
+    agentops.init(api_key=os.getenv('agent_ops_api'), tags=["workflow_t_ts_p.workflow_2"])
 
     # Load LLM configurations
     llm_config_gpt = autogen.config_list_from_json(
@@ -105,3 +111,6 @@ def start_workflow():
         max_round=50
     )
     workflow_manager.start_workflow()
+
+    # Close your AgentOps session to indicate that it completed.
+    agentops.end_session("Success")
